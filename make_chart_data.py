@@ -13,11 +13,11 @@ for line in lines:
     load_factor = float(load_factor)
 
     by_benchtype.setdefault("%s_runtime" % benchtype, {}).setdefault(program, []).append([nkeys, runtime, load_factor])
-    if benchtype in ('insert_random_full', 'insert_small_string', 'insert_string',
-                     'insert_random_full_reserve', 'insert_small_string_reserve', 'insert_string_reserve'):
+    if benchtype in ('insert_random_full', 'insert_random_full_reserve'):
         by_benchtype.setdefault("%s_memory"  % benchtype, {}).setdefault(program, []).append([nkeys, nbytes, load_factor])
 
 proper_names = OrderedDict([
+    ('oha_hash_table', 'oha::lpht'),
     ('std_unordered_map', 'std::unordered_map'),
     ('google_dense_hash_map', 'google::dense_hash_map'),
     ('qt_qhash', 'QHash'),
@@ -37,13 +37,12 @@ proper_names = OrderedDict([
     ('boost_unordered_map', 'boost::unordered_map'),
     ('spp_sparse_hash_map', 'spp::sparse_hash_map'),
     ('emilib_hash_map', 'emilib::HashMap'),
-    ('tsl_array_map', 'tsl::array_map'),
-    ('tsl_array_map_mlf_1_0', 'tsl::array_map (1.0 mlf)'),
 ])
 
 # do them in the desired order to make the legend not overlap the chart data
 # too much
 program_slugs = [
+    'oha_hash_table',
     'std_unordered_map',
     'google_dense_hash_map',
     'qt_qhash',
@@ -63,20 +62,15 @@ program_slugs = [
     'boost_unordered_map',
     'spp_sparse_hash_map',
     'emilib_hash_map',
-    'tsl_array_map',
-    'tsl_array_map_mlf_1_0',
 ]
 
 # hashmap which will be shown (checkbox checked)
 default_programs_show = [
+    'oha_hash_table'
     'std_unordered_map',
     'google_dense_hash_map',
-    'qt_qhash',
-    'tsl_sparse_map',
-    'tsl_hopscotch_map',
-    'tsl_robin_map',
-    'tsl_hopscotch_map_store_hash',
-    'tsl_robin_map_store_hash']
+    'ska_flat_hash_map_power_of_two',
+]
 
 chart_data = {}
 

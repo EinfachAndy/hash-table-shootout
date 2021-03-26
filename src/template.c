@@ -14,23 +14,7 @@
 #include <chrono>
 #include <array>
 
-// TODO When generating random values to insert in the map there is no check
-// to see if duplicate random values are generated. Could improve that (but the probability is so so
-// low and the impact nearly null that it's not really worth it).
-
-static const std::array<char, 62> ALPHANUMERIC_CHARS = {
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-};
-
-/**
- * SMALL_STRING_SIZE should be small enough so that there is no heap allocation when a std::string is created.
- */
-static const std::size_t SMALL_STRING_SIZE = 15;
-static const std::size_t STRING_SIZE = 50;
-
-static const std::int64_t SEED = 0;
+static std::int64_t SEED = time(nullptr);
 static std::mt19937_64 generator(SEED);
 
 
@@ -42,17 +26,6 @@ std::size_t get_memory_usage_bytes() {
     file >> memory;
     
     return memory * getpagesize();
-}
-
-std::string get_random_alphanum_string(std::size_t size) {
-    std::uniform_int_distribution<std::size_t> rd_uniform(0, ALPHANUMERIC_CHARS.size() - 1);
-    
-    std::string str(size, '\0');
-    for(std::size_t i = 0; i < size; i++) {
-        str[i] = ALPHANUMERIC_CHARS[rd_uniform(generator)];
-    }
-    
-    return str;
 }
 
 /**
@@ -81,16 +54,6 @@ std::vector<std::int64_t> get_random_full_ints(std::size_t nb_ints,
     }
     
     return random_ints;
-}
-
-
-std::vector<std::string> get_random_alphanum_strings(std::size_t nb_strings, std::size_t string_size) {
-    std::vector<std::string> random_strings(nb_strings);
-    for(std::size_t i = 0; i < random_strings.size(); i++) {
-        random_strings[i] = get_random_alphanum_string(string_size);
-    }
-    
-    return random_strings;
 }
 
 class measurements {
@@ -244,12 +207,10 @@ int main(int argc, char ** argv) {
         for(std::int64_t i = 0; i < num_keys; i++) {
             INSERT_INT_INTO_HASH(keys[i], value);
         }
-        
-        
+
+
         measurements m;
-        for(auto it = hash.begin(); it != hash.end(); ++it) {
-            CHECK_INT_ITERATOR_VALUE(it, value);
-        }
+        CHECK_INT_ITERATOR_VALUE
     }
     
     else if(test_type == "delete_random_full") {
@@ -267,205 +228,11 @@ int main(int argc, char ** argv) {
         }
     }
     
-    
-    /**
-     * Small strings
-     */
-    else if(test_type == "insert_small_string") {
-        const std::vector<std::string> keys = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-    }
-
-    else if(test_type == "insert_small_string_reserve") {
-        const std::vector<std::string> keys = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-        
-        
-        measurements m;
-        RESERVE_STR(num_keys);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-    }
-
-    else if(test_type == "read_small_string") {
-        std::vector<std::string> keys = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator);
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            FIND_STR_EXISTING_FROM_HASH(keys[i]);
-        }
-    }
-
-    else if(test_type == "read_miss_small_string") {
-        const std::vector<std::string> keys_insert = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-        const std::vector<std::string> keys_read = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys_insert[i], value);
-        }
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            FIND_STR_MISSING_FROM_HASH(keys_read[i]);
-        }
-    }
-
-    else if(test_type == "read_small_string_after_delete") {
-        std::vector<std::string> keys = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator); 
-        for(std::int64_t i = 0; i < num_keys / 2; i++) {
-            DELETE_STR_FROM_HASH(keys[i]);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator);
-        
-        
-        measurements m;
-        std::int64_t nb_found = 0;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            FIND_STR_EXISTING_FROM_HASH_COUNT(keys[i], nb_found);
-        }
-        
-        if(nb_found != num_keys / 2) {
-            std::cout << "error, duplicates" << std::endl;
-            std::exit(6);
-        }
-    }
-
-    else if(test_type == "delete_small_string") {
-        std::vector<std::string> keys = get_random_alphanum_strings(num_keys, SMALL_STRING_SIZE);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator); 
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            DELETE_STR_FROM_HASH(keys[i]);
-        }
-    }
-    
-    
-    
-    /**
-     * Strings
-     */
-    else if(test_type == "insert_string") {
-        const std::vector<std::string> keys = get_random_alphanum_strings(num_keys, STRING_SIZE);
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-    }
-    
-    else if(test_type == "insert_string_reserve") {
-        const std::vector<std::string> keys = get_random_alphanum_strings(num_keys, STRING_SIZE);
-        
-        
-        measurements m;
-        RESERVE_STR(num_keys);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-    }
-
-    else if(test_type == "read_string") {
-        std::vector<std::string> keys = get_random_alphanum_strings(num_keys, STRING_SIZE); 
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator);   
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            FIND_STR_EXISTING_FROM_HASH(keys[i]);
-        }
-    }
-
-    else if(test_type == "read_miss_string") {
-        const std::vector<std::string> keys_insert = get_random_alphanum_strings(num_keys, STRING_SIZE);
-        const std::vector<std::string> keys_read = get_random_alphanum_strings(num_keys, STRING_SIZE);
-
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys_insert[i], value);
-        }
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            FIND_STR_MISSING_FROM_HASH(keys_read[i]);
-        }
-    }
-
-    else if(test_type == "read_string_after_delete") {
-        std::vector<std::string> keys = get_random_alphanum_strings(num_keys, STRING_SIZE);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator); 
-        for(std::int64_t i = 0; i < num_keys / 2; i++) {
-            DELETE_STR_FROM_HASH(keys[i]);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator);
-        
-        
-        measurements m;
-        std::int64_t nb_found = 0;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            FIND_STR_EXISTING_FROM_HASH_COUNT(keys[i], nb_found);
-        }
-        
-        if(nb_found != num_keys / 2) {
-            std::cout << "error, duplicates" << std::endl;
-            std::exit(6);
-        }
-    }
-
-    else if(test_type == "delete_string") {
-        std::vector<std::string> keys = get_random_alphanum_strings(num_keys, STRING_SIZE);
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            INSERT_STR_INTO_HASH(keys[i], value);
-        }
-        
-        std::shuffle(keys.begin(), keys.end(), generator); 
-        
-        
-        measurements m;
-        for(std::int64_t i = 0; i < num_keys; i++) {
-            DELETE_STR_FROM_HASH(keys[i]);
-        }
-    }
-    
     else {
         std::cout << "Unknown test type: " << test_type << "." << std::endl;
         std::exit(1);
     }
     
-    
-    const float load_factor = std::max(LOAD_FACTOR(hash), LOAD_FACTOR(str_hash));
+    const float load_factor = LOAD_FACTOR(hash);
     std::cout << load_factor << std::endl;
 }
